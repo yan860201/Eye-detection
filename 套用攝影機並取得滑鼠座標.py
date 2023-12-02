@@ -1,10 +1,10 @@
 import cv2
 import numpy as np
 import dlib
-import datetime
+import pyautogui
 
 # 輸入來源，輸入攝影機訊號
-cap = cv2.VideoCapture(1)
+cap = cv2.VideoCapture(0)
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
 
@@ -23,7 +23,7 @@ def filter(roi):
     """
     影像二值化，將顏色較深的區域做區隔***第二個參數為二值化分界，需視情況調整***
     """
-    _, threshold = cv2.threshold(gray_roi, 30, 255, cv2.THRESH_BINARY_INV)
+    _, threshold = cv2.threshold(gray_roi, 110, 255, cv2.THRESH_BINARY_INV)
     threshold = cv2.erode(threshold, np.ones((10, 10)))  # 侵蝕
     threshold = cv2.dilate(threshold, np.ones((10, 10)))  # 擴張，此兩步驟平滑化二值化影像的邊緣
     # 將邊緣取出
@@ -46,7 +46,7 @@ def filter(roi):
         maxRadius=15,
     )
 
-    # cv2.imshow("高斯", gray_roi)
+    cv2.imshow("高斯", gray_roi)
     # cv2.imshow("邊緣", 邊緣)
     # cv2.imshow("二值", threshold)
     return circles, contours
@@ -54,6 +54,7 @@ def filter(roi):
 
 方法一紀錄 = []
 方法二紀錄 = []
+滑鼠座標 = []
 
 while True:
     success, frame = cap.read()
@@ -77,7 +78,7 @@ while True:
             """
             右眼左邊界 = int((landmarks.part(36).x)) - 10
             右眼右邊界 = int((landmarks.part(39).x)) + 10
-            右眼上邊界 = int((landmarks.part(19).y)) + 17
+            右眼上邊界 = int((landmarks.part(19).y)) + 22
             右眼下邊界 = int((landmarks.part(28).y))
 
             roi_R = frame[右眼上邊界:右眼下邊界, 右眼左邊界:右眼右邊界]
@@ -139,7 +140,7 @@ while True:
             """
             左眼左邊界 = int((landmarks.part(42).x)) - 10
             左眼右邊界 = int((landmarks.part(45).x)) + 10
-            左眼上邊界 = int(landmarks.part(24).y) + 17
+            左眼上邊界 = int(landmarks.part(24).y) + 22
             左眼下邊界 = int((landmarks.part(28).y))
 
             roi_L = frame[左眼上邊界:左眼下邊界, 左眼左邊界:左眼右邊界]
@@ -202,21 +203,24 @@ while True:
 
     方法一紀錄.append([x_R方法一, y_R方法一, x_L方法一, y_L方法一])
     方法二紀錄.append([x_R, y_R, x_L, y_L])
+    滑鼠座標.append(pyautogui.position())
 
     cv2.imshow("frame", frame)
     key = cv2.waitKey(30)
     # 按Esc可結束
     if key == 27:
         import pandas as pd
+        import datetime
 
         date = datetime.datetime.now()
         date = date.strftime("%m%d%X")
         date = date.split(":")
         print(date)
+        df滑鼠座標 = pd.DataFrame(滑鼠座標)
         df方法一 = pd.DataFrame(方法一紀錄)
         df方法二 = pd.DataFrame(方法二紀錄)
-        df方法一.to_csv(f"座標/{date[0] + date[1] + date[2]}方法一.csv", index=None)
-        df方法二.to_csv(f"座標/{date[0] + date[1] + date[2]}方法二.csv", index=None)
+        df = pd.concat([df方法一, df方法二, df滑鼠座標], axis=1)
+        df.to_csv(f"座標/{date[0] + date[1] + date[2]}.csv", index=None)
         break
 
 cv2.destroyAllWindows()
